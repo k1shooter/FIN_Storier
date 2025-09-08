@@ -4,6 +4,10 @@ import sqlite3
 import os
 from dotenv import load_dotenv
 import google.generativeai as genai
+from gtts import gTTS
+from PIL import Image
+import io
+import time
 
 # .env 파일에서 환경 변수 로드
 load_dotenv()
@@ -18,7 +22,11 @@ genai.configure(api_key=api_key)
 # --- 1. 데이터베이스 연결 및 정보 검색 ---
 def get_product_description(product_name):
     """데이터베이스에서 금융 상품의 설명을 가져옵니다."""
-    conn = sqlite3.connect('db/financial_products.db')
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    project_root = os.path.dirname(script_dir)
+    db_path = os.path.join(project_root, 'db', 'financial_products.db')
+    
+    conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
     cursor.execute("SELECT description FROM products WHERE name = ?", (product_name,))
     result = cursor.fetchone()
@@ -33,7 +41,8 @@ def generate_storyline(product_name, description):
     """Gemini를 사용하여 동화 스토리라인을 생성합니다."""
     print(f"\n'{product_name}'에 대한 스토리라인 생성 중... (Gemini API 호출)")
     
-    model = genai.GenerativeModel('models/gemini-1.5-flash-latest')
+    # 텍스트 생성은 flash 모델을 사용
+    model = genai.GenerativeModel('gemini-1.5-flash-latest')
     
     prompt = f"""
     당신은 금융 지식을 아이들이 이해하기 쉽게 동화로 각색하는 전문 동화 작가입니다.
@@ -48,18 +57,20 @@ def generate_storyline(product_name, description):
     
     try:
         response = model.generate_content(prompt)
-        # API 응답에서 마크다운(` ``` `)을 제거하여 순수 텍스트만 반환
         clean_text = response.text.replace('`', '')
         return clean_text
     except Exception as e:
-        print(f"오류: Gemini API 호출에 실패했습니다. API 키가 정확한지, 인터넷 연결이 되어있는지 확인해주세요.")
-        print(f"에러 상세 정보: {e}")
+        print(f"오류: 스토리라인 생성 중 API 호출 실패: {e}")
         return None
 
-# --- 3. 두 번째 프롬프팅: 일러스트 생성 ---
+# --- 3. 두 번째 프롬프팅: 일러스트 생성 (진짜 최종 수정) ---
 def generate_illustrations(storyline):
-    # TODO: Gemini 이미지 API 호출로 교체 예정
-    print("\n일러스트 생성 중... (현재는 임시 파일 생성)")
+    """이미지 생성 전용 모델을 사용하여 동화 일러스트를 생성합니다."""
+    print("\n일러스트 생성 중... (이미지 생성 전용 모델 API 호출)")
+    
+    # [최종 수정] 사용자님이 제공해주신 목록에 있는 "이미지 생성 전용 모델"로 변경
+    image_model = genai.GenerativeModel('models/gemini-2.5-flash-image-preview')
+
     scenes = [s.strip() for s in storyline.strip().split('장면') if s and ':' in s]
     if not scenes:
         print("  - 스토리라인에서 장면을 추출할 수 없습니다.")
@@ -68,15 +79,42 @@ def generate_illustrations(storyline):
     for i, scene_text in enumerate(scenes):
         scene_number = i + 1
         print(f"  - 장면 {scene_number} 이미지 생성 중...")
-        with open(f"output/scene_{scene_number}_image_placeholder.txt", "w", encoding="utf-8") as f:
-            f.write(f"이곳에 다음 내용의 이미지가 생성됩니다: {scene_text}")
-    print("\n'output' 폴더에 임시 일러스트 파일이 생성되었습니다.")
+        
+        # 이미지 생성 모델을 위한 간단하고 명확한 프롬프트
+        image_prompt = f"A cute and heartwarming children's storybook illustration of the following scene: {scene_text}"
+        
+        try:
+            # 이미지 생성 요청
+            response = image_model.generate_content(image_prompt)
+            
+            # 응답에 이미지 데이터(blob)가 있는지 확인
+            if hasattr(response, 'parts') and response.parts and hasattr(response.parts[0], 'blob'):
+                img_data = response.parts[0].blob.data
+                img = Image.open(io.BytesIO(img_data))
+                img.save(f"output/scene_{scene_number}_image.png")
+            else:
+                # 텍스트 응답이 올 경우의 에러 처리
+                error_message = response.text if hasattr(response, 'text') else "알 수 없는 응답 포맷"
+                print(f"  - 장면 {scene_number} 이미지 생성 실패. 모델이 텍스트를 반환했습니다:")
+                print(f"    모델 응답: {error_message}")
+                with open(f"output/scene_{scene_number}_error.txt", "w", encoding="utf-8") as f:
+                    f.write(f"모델 응답:\n{error_message}")
+
+        except Exception as e:
+            print(f"  - 장면 {scene_number} 이미지 생성 중 오류 발생: {e}")
+            with open(f"output/scene_{scene_number}_error.txt", "w", encoding="utf-8") as f:
+                f.write(f"API 호출 오류:\n{e}")
+        
+        # API의 분당 요청 제한(RPM)을 피하기 위해 잠시 대기
+        time.sleep(2)
+
+    print("\n'output' 폴더에 일러스트 파일 생성이 완료되었습니다.")
 
 
 # --- 4. 음성 및 자막 생성 ---
 def generate_voice_and_subtitles(storyline):
-    # TODO: gTTS 라이브러리 연동 예정
-    print("\n음성 및 자막 생성 중... (현재는 임시 파일 생성)")
+    """gTTS를 사용하여 음성 파일을 생성하고, 자막 파일을 만듭니다."""
+    print("\n음성 및 자막 생성 중...")
     scenes = [s.strip() for s in storyline.strip().split('장면') if s and ':' in s]
     if not scenes:
         print("  - 스토리라인에서 장면을 추출할 수 없습니다.")
@@ -84,24 +122,27 @@ def generate_voice_and_subtitles(storyline):
 
     for i, scene_text in enumerate(scenes):
         scene_number = i + 1
-        # "1:", "2:" 같은 부분 뒤의 실제 내용만 추출
-        if ":" in scene_text:
-            clean_text = scene_text.split(":", 1)[1].strip()
-        else:
-            clean_text = scene_text
+        clean_text = scene_text.split(":", 1)[1].strip() if ":" in scene_text else scene_text
         
         print(f"  - 장면 {scene_number} 음성/자막 생성 중...")
-        with open(f"output/scene_{scene_number}_audio_placeholder.txt", "w", encoding="utf-8") as f:
-            f.write(f"이곳에 다음 내용의 음성이 생성됩니다: {clean_text}")
+        
+        try:
+            tts = gTTS(text=clean_text, lang='ko')
+            tts.save(f"output/scene_{scene_number}_audio.mp3")
+        except Exception as e:
+            print(f"  - 장면 {scene_number} 음성 생성 중 오류 발생: {e}")
+            with open(f"output/scene_{scene_number}_audio_placeholder.txt", "w", encoding="utf-8") as f:
+                f.write(f"음성 생성 오류: {clean_text}")
+
         with open(f"output/scene_{scene_number}_subtitle.txt", "w", encoding="utf-8") as f:
             f.write(clean_text)
-    print("\n'output' 폴더에 임시 음성 및 자막 파일이 생성되었습니다.")
+            
+    print("\n'output' 폴더에 음성 및 자막 파일이 생성되었습니다.")
 
 
 # --- 메인 실행 로직 ---
 def main():
     """프로그램의 메인 로직을 실행합니다."""
-    # 현재는 '복리'를 예시로 고정했지만, 나중에는 사용자 입력을 받도록 수정할 수 있습니다.
     product_to_explain = "복리" 
     print(f"--- '{product_to_explain}' 설명 프로세스 시작 ---")
 
