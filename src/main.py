@@ -80,8 +80,12 @@ def generate_illustrations(storyline):
         scene_number = i + 1
         print(f"  - 장면 {scene_number} 이미지 생성 중...")
         
+        # [수정] 음성/자막과 동일한 텍스트를 사용하도록 장면 번호를 제거하고, "**" 문자를 제거합니다.
+        clean_text = scene_text.split(":", 1)[1].strip() if ":" in scene_text else scene_text
+        clean_text = clean_text.replace('**', '')
+        
         # 이미지 생성 모델을 위한 간단하고 명확한 프롬프트
-        image_prompt = f"A cute and heartwarming children's storybook illustration of the following scene: {scene_text}"
+        image_prompt = f"A cute and heartwarming children's storybook illustration of the following scene: {clean_text}"
         
         try:
             # 이미지 생성 요청
@@ -123,6 +127,7 @@ def generate_voice_and_subtitles(storyline):
     for i, scene_text in enumerate(scenes):
         scene_number = i + 1
         clean_text = scene_text.split(":", 1)[1].strip() if ":" in scene_text else scene_text
+        clean_text = clean_text.replace('**', '')
         
         print(f"  - 장면 {scene_number} 음성/자막 생성 중...")
         
@@ -143,7 +148,7 @@ def generate_voice_and_subtitles(storyline):
 # --- 메인 실행 로직 ---
 def main():
     """프로그램의 메인 로직을 실행합니다."""
-    product_to_explain = "복리" 
+    product_to_explain = "현대카드_제로_에디션"  # 설명할 금융 상품 이름
     print(f"--- '{product_to_explain}' 설명 프로세스 시작 ---")
 
     description = get_product_description(product_to_explain)
