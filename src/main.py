@@ -2,12 +2,15 @@
 
 import sqlite3
 import os
-from dotenv import load_dotenv
-import google.generativeai as genai
-from gtts import gTTS
-from PIL import Image
 import io
 import time
+from dotenv import load_dotenv
+
+from google import genai
+from google.genai import types
+
+from gtts import gTTS
+from PIL import Image
 
 # .env 파일에서 환경 변수 로드
 load_dotenv()
@@ -16,8 +19,6 @@ load_dotenv()
 api_key = os.getenv("GEMINI_API_KEY")
 if not api_key or api_key == "YOUR_API_KEY_HERE":
     raise ValueError("GEMINI_API_KEY가 .env 파일에 설정되지 않았거나 유효하지 않습니다. .env 파일을 확인해주세요.")
-genai.configure(api_key=api_key)
-
 
 # --- 1. 데이터베이스 연결 및 정보 검색 ---
 def get_product_description(product_name):
@@ -25,7 +26,7 @@ def get_product_description(product_name):
     script_dir = os.path.dirname(os.path.abspath(__file__))
     project_root = os.path.dirname(script_dir)
     db_path = os.path.join(project_root, 'db', 'financial_products.db')
-    
+
     conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
     cursor.execute("SELECT description FROM products WHERE name = ?", (product_name,))
@@ -37,39 +38,36 @@ def get_product_description(product_name):
         return None
 
 # --- 2. 첫 번째 프롬프팅: 스토리라인 생성 ---
-def generate_storyline(product_name, description):
+def generate_storyline(client, product_name, description):
     """Gemini를 사용하여 동화 스토리라인을 생성합니다."""
     print(f"\n'{product_name}'에 대한 스토리라인 생성 중... (Gemini API 호출)")
-    
-    # 텍스트 생성은 flash 모델을 사용
-    model = genai.GenerativeModel('gemini-1.5-flash-latest')
-    
+
     prompt = f"""
     당신은 금융 지식을 아이들이 이해하기 쉽게 동화로 각색하는 전문 동화 작가입니다.
 
     금융 개념: {product_name}
     핵심 설명: {description}
 
-    위 금융 개념의 핵심 원리를 바탕으로, 5개의 장면으로 구성된 짧고 교훈적인 동화 시나리오를 만들어주세요.
+    위 금융 개념의 핵심 원리를 바탕으로, '갈색 털에 동그란 눈을 가진 아기 다람쥐'가 주인공인 5개의 장면으로 구성된 짧고 교훈적인 동화 시나리오를 만들어주세요.
     각 장면은 '장면 1:', '장면 2:' 와 같이 번호와 콜론으로 시작해야 합니다.
     이야기는 희망차고 긍정적인 분위기로 만들어주세요.
     """
-    
+
     try:
-        response = model.generate_content(prompt)
+        response = client.models.generate_content(
+            model="gemini-2.5-flash-lite",
+            contents=[prompt]
+        )
         clean_text = response.text.replace('`', '')
         return clean_text
     except Exception as e:
         print(f"오류: 스토리라인 생성 중 API 호출 실패: {e}")
         return None
 
-# --- 3. 두 번째 프롬프팅: 일러스트 생성 (진짜 최종 수정) ---
-def generate_illustrations(storyline):
-    """이미지 생성 전용 모델을 사용하여 동화 일러스트를 생성합니다."""
-    print("\n일러스트 생성 중... (이미지 생성 전용 모델 API 호출)")
-    
-    # [최종 수정] 사용자님이 제공해주신 목록에 있는 "이미지 생성 전용 모델"로 변경
-    image_model = genai.GenerativeModel('models/gemini-2.5-flash-image-preview')
+# --- 3. 두 번째 프롬프팅: 일러스트 생성 (안정적인 Imagen 모델 사용) ---
+def generate_illustrations(client, storyline):
+    """안정적인 Imagen 모델을 사용하여 동화 일러스트를 생성합니다."""
+    print("\n일러스트 생성 중... (Imagen API 호출)")
 
     scenes = [s.strip() for s in storyline.strip().split('장면') if s and ':' in s]
     if not scenes:
@@ -79,38 +77,50 @@ def generate_illustrations(storyline):
     for i, scene_text in enumerate(scenes):
         scene_number = i + 1
         print(f"  - 장면 {scene_number} 이미지 생성 중...")
-        
-        # [수정] 음성/자막과 동일한 텍스트를 사용하도록 장면 번호를 제거하고, "**" 문자를 제거합니다.
+
         clean_text = scene_text.split(":", 1)[1].strip() if ":" in scene_text else scene_text
         clean_text = clean_text.replace('**', '')
-        
-        # 이미지 생성 모델을 위한 간단하고 명확한 프롬프트
-        image_prompt = f"A cute and heartwarming children's storybook illustration of the following scene: {clean_text}"
-        
-        try:
-            # 이미지 생성 요청
-            response = image_model.generate_content(image_prompt)
-            
-            # 응답에 이미지 데이터(blob)가 있는지 확인
-            if hasattr(response, 'parts') and response.parts and hasattr(response.parts[0], 'blob'):
-                img_data = response.parts[0].blob.data
-                img = Image.open(io.BytesIO(img_data))
-                img.save(f"output/scene_{scene_number}_image.png")
-            else:
-                # 텍스트 응답이 올 경우의 에러 처리
-                error_message = response.text if hasattr(response, 'text') else "알 수 없는 응답 포맷"
-                print(f"  - 장면 {scene_number} 이미지 생성 실패. 모델이 텍스트를 반환했습니다:")
-                print(f"    모델 응답: {error_message}")
-                with open(f"output/scene_{scene_number}_error.txt", "w", encoding="utf-8") as f:
-                    f.write(f"모델 응답:\n{error_message}")
 
-        except Exception as e:
-            print(f"  - 장면 {scene_number} 이미지 생성 중 오류 발생: {e}")
+        # [수정] 캐릭터 일관성을 위해 주인공 외모를 프롬프트에 명시
+        image_prompt = f"A cute and heartwarming children's storybook illustration of the following scene without any captions or speech balloons. The main character is a baby squirrel with brown fur and round eyes: {clean_text}"
+
+        image_generated = False
+        for attempt in range(3):
+            try:
+                # [수정] 안정적인 Imagen 모델 호출
+                result = client.models.generate_images(
+                    model="models/imagen-3.0-generate-002",
+                    prompt=image_prompt,
+                    config=types.GenerateImagesConfig(
+                        number_of_images=1,
+                        output_mime_type="image/png",
+                        #person_generation=types.PersonGeneration.ALLOW_ALL,
+                        aspect_ratio="1:1",
+                    ),
+                )
+
+                if result.generated_images:
+                    for generated_image in result.generated_images:
+                        img = Image.open(io.BytesIO(generated_image.image.image_bytes))
+                        img.save(f"output/scene_{scene_number}_image.png")
+                        image_generated = True
+                        break
+                
+                if image_generated:
+                    break
+                else:
+                    print(f"  - 장면 {scene_number} 이미지 생성 실패 (시도 {attempt + 1}/3). 모델이 이미지를 반환하지 않았습니다. 재시도합니다.")
+                    time.sleep(5)
+
+            except Exception as e:
+                print(f"  - 장면 {scene_number} 이미지 생성 중 오류 발생 (시도 {attempt + 1}/3): {e}")
+                time.sleep(5)
+
+        if not image_generated:
+            error_message = "최대 재시도 횟수(3회)를 초과하였으나 이미지 생성에 실패했습니다."
+            print(f"  - {error_message}")
             with open(f"output/scene_{scene_number}_error.txt", "w", encoding="utf-8") as f:
-                f.write(f"API 호출 오류:\n{e}")
-        
-        # API의 분당 요청 제한(RPM)을 피하기 위해 잠시 대기
-        time.sleep(2)
+                f.write(error_message)
 
     print("\n'output' 폴더에 일러스트 파일 생성이 완료되었습니다.")
 
@@ -128,9 +138,9 @@ def generate_voice_and_subtitles(storyline):
         scene_number = i + 1
         clean_text = scene_text.split(":", 1)[1].strip() if ":" in scene_text else scene_text
         clean_text = clean_text.replace('**', '')
-        
+
         print(f"  - 장면 {scene_number} 음성/자막 생성 중...")
-        
+
         try:
             tts = gTTS(text=clean_text, lang='ko')
             tts.save(f"output/scene_{scene_number}_audio.mp3")
@@ -141,14 +151,17 @@ def generate_voice_and_subtitles(storyline):
 
         with open(f"output/scene_{scene_number}_subtitle.txt", "w", encoding="utf-8") as f:
             f.write(clean_text)
-            
+
     print("\n'output' 폴더에 음성 및 자막 파일이 생성되었습니다.")
 
 
 # --- 메인 실행 로직 ---
 def main():
     """프로그램의 메인 로직을 실행합니다."""
-    product_to_explain = "현대카드_제로_에디션"  # 설명할 금융 상품 이름
+    
+    client = genai.Client(api_key=api_key)
+
+    product_to_explain = "펀드"
     print(f"--- '{product_to_explain}' 설명 프로세스 시작 ---")
 
     description = get_product_description(product_to_explain)
@@ -156,16 +169,16 @@ def main():
         print(f"오류: '{product_to_explain}'에 대한 정보를 DB에서 찾을 수 없습니다.")
         return
 
-    storyline = generate_storyline(product_to_explain, description)
+    storyline = generate_storyline(client, product_to_explain, description)
     if not storyline:
         print("\n스토리라인 생성에 실패하여 프로세스를 중단합니다.")
         return
-        
+
     print("\n--- 생성된 스토리라인 ---")
     print(storyline)
     print("--------------------------")
 
-    generate_illustrations(storyline)
+    generate_illustrations(client, storyline)
     generate_voice_and_subtitles(storyline)
 
     print("\n--- 모든 프로세스 완료 ---")
