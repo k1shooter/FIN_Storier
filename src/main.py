@@ -4,6 +4,7 @@ import sqlite3
 import os
 import io
 import time
+import re
 from dotenv import load_dotenv
 
 from google import genai
@@ -48,7 +49,9 @@ def generate_storyline(client, product_name, description):
     금융 개념: {product_name}
     핵심 설명: {description}
 
-    위 금융 개념의 핵심 원리를 바탕으로, '갈색 털에 동그란 눈을 가진 아기 다람쥐'가 주인공인 5개의 장면으로 구성된 짧고 교훈적인 동화 시나리오를 만들어주세요.
+    위 금융 개념의 핵심 원리를 바탕으로 동화 시나리오를 만들어주세요.
+    시나리오 시작 부분에 '등장인물:' 섹션을 만들고, 주인공들의 이름과 간단한 특징을 명시해주세요.
+    그 다음 '---' 구분선을 넣고, 5개의 장면으로 구성된 짧고 교훈적인 동화 시나리오를 만들어주세요.
     각 장면은 '장면 1:', '장면 2:' 와 같이 번호와 콜론으로 시작해야 합니다.
     이야기는 희망차고 긍정적인 분위기로 만들어주세요.
     """
@@ -64,15 +67,71 @@ def generate_storyline(client, product_name, description):
         print(f"오류: 스토리라인 생성 중 API 호출 실패: {e}")
         return None
 
-# --- 3. 두 번째 프롬프팅: 일러스트 생성 (안정적인 Imagen 모델 사용) ---
-def generate_illustrations(client, storyline):
-    """안정적인 Imagen 모델을 사용하여 동화 일러스트를 생성합니다."""
-    print("\n일러스트 생성 중... (Imagen API 호출)")
+def parse_storyline(storyline_text):
+    """스토리라인 텍스트에서 등장인물 설명과 장면들을 분리합니다."""
+    try:
+        parts = re.split(r'\n---\n', storyline_text, 1)
+        if len(parts) == 2:
+            character_part = parts[0]
+            scene_part = parts[1]
+            character_description = character_part.replace("등장인물:", "").strip()
+            return character_description, scene_part
+        else:
+            return None, storyline_text
+    except Exception as e:
+        print(f"오류: 스토리라인 파싱 중 오류 발생: {e}")
+        return None, storyline_text
 
-    scenes = [s.strip() for s in storyline.strip().split('장면') if s and ':' in s]
-    if not scenes:
-        print("  - 스토리라인에서 장면을 추출할 수 없습니다.")
+
+# --- 3. 두 번째 프롬프팅: 일러스트 생성 (표지 참조 파이프라인) ---
+def generate_illustrations(client, scenes_text, character_description):
+    """표지 이미지를 생성하고, 이를 참조하여 각 장면의 일러스트를 생성합니다."""
+    print("\n일러스트 생성 중... (Gemini Image Preview API 호출)")
+
+    if not character_description:
+        print("  - 등장인물 정보가 없어 일러스트 생성을 건너<binary data, 2 bytes, 1 bytes>니다.")
         return
+
+    # 1. 표지 이미지 생성
+    cover_image = None
+    print("  - 동화책 표지 이미지 생성 중...")
+    cover_prompt = f"""
+    Create a cover illustration for a children's storybook featuring all the following characters in a cute and heartwarming style, without any text, captions, or speech balloons.
+
+    Characters:
+    {character_description}
+    """
+    for attempt in range(3):
+        try:
+            generate_content_config = types.GenerateContentConfig(response_modalities=["IMAGE"])
+            response = client.models.generate_content(
+                model="gemini-2.5-flash-image-preview",
+                contents=[cover_prompt],
+                config=generate_content_config,
+            )
+            if response.candidates:
+                for part in response.candidates[0].content.parts:
+                    if part.inline_data:
+                        img_data = part.inline_data.data
+                        cover_image = Image.open(io.BytesIO(img_data))
+                        cover_image.save("output/cover_image.png")
+                        print("  - 표지 이미지 생성 성공!")
+                        break
+            if cover_image:
+                break
+            else:
+                print(f"  - 표지 이미지 생성 실패 (시도 {attempt + 1}/3). 재시도합니다.")
+                time.sleep(5)
+        except Exception as e:
+            print(f"  - 표지 이미지 생성 중 오류 발생 (시도 {attempt + 1}/3): {e}")
+            time.sleep(5)
+
+    if not cover_image:
+        print("  - 최종적으로 표지 이미지 생성에 실패하여 일러스트 생성을 중단합니다.")
+        return
+
+    # 2. 장면별 일러스트 생성
+    scenes = [s.strip() for s in scenes_text.strip().split('장면') if s and ':' in s]
 
     for i, scene_text in enumerate(scenes):
         scene_number = i + 1
@@ -81,55 +140,56 @@ def generate_illustrations(client, storyline):
         clean_text = scene_text.split(":", 1)[1].strip() if ":" in scene_text else scene_text
         clean_text = clean_text.replace('**', '')
 
-        # [수정] 캐릭터 일관성을 위해 주인공 외모를 프롬프트에 명시
-        image_prompt = f"A cute and heartwarming children's storybook illustration of the following scene without any captions or speech balloons. The main character is a baby squirrel with brown fur and round eyes: {clean_text}"
+        scene_prompt = f"""
+        Reference the characters and art style from the provided cover image.
+        
+        Characters for reference:
+        {character_description}
+
+        Now, draw the following scene without any text, captions, or speech balloons:
+        {clean_text}
+        """
+        contents_for_api = [cover_image, scene_prompt]
 
         image_generated = False
         for attempt in range(3):
             try:
-                # [수정] 안정적인 Imagen 모델 호출
-                result = client.models.generate_images(
-                    model="models/imagen-3.0-generate-002",
-                    prompt=image_prompt,
-                    config=types.GenerateImagesConfig(
-                        number_of_images=1,
-                        output_mime_type="image/png",
-                        #person_generation=types.PersonGeneration.ALLOW_ALL,
-                        aspect_ratio="1:1",
-                    ),
+                generate_content_config = types.GenerateContentConfig(response_modalities=["IMAGE"])
+                response = client.models.generate_content(
+                    model="gemini-2.5-flash-image-preview",
+                    contents=contents_for_api,
+                    config=generate_content_config,
                 )
-
-                if result.generated_images:
-                    for generated_image in result.generated_images:
-                        img = Image.open(io.BytesIO(generated_image.image.image_bytes))
-                        img.save(f"output/scene_{scene_number}_image.png")
-                        image_generated = True
-                        break
-                
+                if response.candidates:
+                    for part in response.candidates[0].content.parts:
+                        if part.inline_data:
+                            img = Image.open(io.BytesIO(part.inline_data.data))
+                            img.save(f"output/scene_{scene_number}_image.png")
+                            image_generated = True
+                            break
                 if image_generated:
                     break
                 else:
-                    print(f"  - 장면 {scene_number} 이미지 생성 실패 (시도 {attempt + 1}/3). 모델이 이미지를 반환하지 않았습니다. 재시도합니다.")
+                    print(f"  - 장면 {scene_number} 이미지 생성 실패 (시도 {attempt + 1}/3). 재시도합니다.")
                     time.sleep(5)
-
             except Exception as e:
                 print(f"  - 장면 {scene_number} 이미지 생성 중 오류 발생 (시도 {attempt + 1}/3): {e}")
                 time.sleep(5)
 
         if not image_generated:
-            error_message = "최대 재시도 횟수(3회)를 초과하였으나 이미지 생성에 실패했습니다."
-            print(f"  - {error_message}")
+            print(f"  - 장면 {scene_number} 이미지 생성에 최종적으로 실패했습니다.")
             with open(f"output/scene_{scene_number}_error.txt", "w", encoding="utf-8") as f:
-                f.write(error_message)
+                f.write("최대 재시도 횟수 초과")
 
     print("\n'output' 폴더에 일러스트 파일 생성이 완료되었습니다.")
 
 
 # --- 4. 음성 및 자막 생성 ---
-def generate_voice_and_subtitles(storyline):
+def generate_voice_and_subtitles(scenes_text):
     """gTTS를 사용하여 음성 파일을 생성하고, 자막 파일을 만듭니다."""
     print("\n음성 및 자막 생성 중...")
-    scenes = [s.strip() for s in storyline.strip().split('장면') if s and ':' in s]
+    
+    scenes = [s.strip() for s in scenes_text.strip().split('장면') if s and ':' in s]
     if not scenes:
         print("  - 스토리라인에서 장면을 추출할 수 없습니다.")
         return
@@ -161,7 +221,7 @@ def main():
     
     client = genai.Client(api_key=api_key)
 
-    product_to_explain = "펀드"
+    product_to_explain = "복리"
     print(f"--- '{product_to_explain}' 설명 프로세스 시작 ---")
 
     description = get_product_description(product_to_explain)
@@ -169,17 +229,20 @@ def main():
         print(f"오류: '{product_to_explain}'에 대한 정보를 DB에서 찾을 수 없습니다.")
         return
 
-    storyline = generate_storyline(client, product_to_explain, description)
-    if not storyline:
+    full_storyline_text = generate_storyline(client, product_to_explain, description)
+    if not full_storyline_text:
         print("\n스토리라인 생성에 실패하여 프로세스를 중단합니다.")
         return
 
     print("\n--- 생성된 스토리라인 ---")
-    print(storyline)
+    print(full_storyline_text)
     print("--------------------------")
 
-    generate_illustrations(client, storyline)
-    generate_voice_and_subtitles(storyline)
+    character_description, scenes_text = parse_storyline(full_storyline_text)
+
+    generate_illustrations(client, scenes_text, character_description)
+    
+    generate_voice_and_subtitles(scenes_text)
 
     print("\n--- 모든 프로세스 완료 ---")
     print("'output' 폴더에서 결과물을 확인하세요.")
