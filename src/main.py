@@ -221,7 +221,7 @@ def main():
     
     client = genai.Client(api_key=api_key)
 
-    product_to_explain = "복리"
+    product_to_explain = "펀드"
     print(f"--- '{product_to_explain}' 설명 프로세스 시작 ---")
 
     description = get_product_description(product_to_explain)
