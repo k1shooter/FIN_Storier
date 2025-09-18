@@ -32,7 +32,7 @@ def main():
 
     # 2. 문서 분할 (Split)
     print("문서를 청크(Chunk) 단위로 분할 중...")
-    text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=100)
+    text_splitter = RecursiveCharacterTextSplitter(chunk_size=500, chunk_overlap=50)
     docs = text_splitter.split_documents(documents)
     print(f"총 {len(docs)}개의 청크로 분할되었습니다.")
 
