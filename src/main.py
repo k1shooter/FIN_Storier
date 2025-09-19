@@ -6,6 +6,7 @@ import io
 import time
 import re
 from dotenv import load_dotenv
+from datetime import datetime # datetime 모듈 추가
 
 from google import genai
 from google.genai import types
@@ -84,7 +85,7 @@ def parse_storyline(storyline_text):
 
 
 # --- 3. 두 번째 프롬프팅: 일러스트 생성 (표지 참조 파이프라인) ---
-def generate_illustrations(client, scenes_text, character_description):
+def generate_illustrations(client, scenes_text, character_description, output_dir):
     """표지 이미지를 생성하고, 이를 참조하여 각 장면의 일러스트를 생성합니다."""
     print("\n일러스트 생성 중... (Gemini Image Preview API 호출)")
 
@@ -114,7 +115,7 @@ def generate_illustrations(client, scenes_text, character_description):
                     if part.inline_data:
                         img_data = part.inline_data.data
                         cover_image = Image.open(io.BytesIO(img_data))
-                        cover_image.save("output/cover_image.png")
+                        cover_image.save(os.path.join(output_dir, "cover_image.png"))
                         print("  - 표지 이미지 생성 성공!")
                         break
             if cover_image:
@@ -164,7 +165,7 @@ def generate_illustrations(client, scenes_text, character_description):
                     for part in response.candidates[0].content.parts:
                         if part.inline_data:
                             img = Image.open(io.BytesIO(part.inline_data.data))
-                            img.save(f"output/scene_{scene_number}_image.png")
+                            img.save(os.path.join(output_dir, f"scene_{scene_number}_image.png"))
                             image_generated = True
                             break
                 if image_generated:
@@ -185,7 +186,7 @@ def generate_illustrations(client, scenes_text, character_description):
 
 
 # --- 4. 음성 및 자막 생성 ---
-def generate_voice_and_subtitles(scenes_text):
+def generate_voice_and_subtitles(scenes_text, output_dir):
     """gTTS를 사용하여 음성 파일을 생성하고, 자막 파일을 만듭니다."""
     print("\n음성 및 자막 생성 중...")
     
@@ -203,13 +204,13 @@ def generate_voice_and_subtitles(scenes_text):
 
         try:
             tts = gTTS(text=clean_text, lang='ko')
-            tts.save(f"output/scene_{scene_number}_audio.mp3")
+            tts.save(os.path.join(output_dir, f"scene_{scene_number}_audio.mp3"))
         except Exception as e:
             print(f"  - 장면 {scene_number} 음성 생성 중 오류 발생: {e}")
             with open(f"output/scene_{scene_number}_audio_placeholder.txt", "w", encoding="utf-8") as f:
                 f.write(f"음성 생성 오류: {clean_text}")
 
-        with open(f"output/scene_{scene_number}_subtitle.txt", "w", encoding="utf-8") as f:
+        with open(os.path.join(output_dir, f"scene_{scene_number}_subtitle.txt"), "w", encoding="utf-8") as f:
             f.write(clean_text)
 
     print("\n'output' 폴더에 음성 및 자막 파일이 생성되었습니다.")
@@ -242,11 +243,21 @@ def main():
     print(full_storyline_text)
     print("--------------------------")
 
+    # ▼▼▼ 새로운 이야기 폴더 생성 로직 추가 ▼▼▼
+    timestamp = datetime.now().strftime("story_%Y%m%d_%H%M%S")
+    output_dir = os.path.join("output", timestamp)
+    os.makedirs(output_dir, exist_ok=True)
+    print(f"\n결과물 폴더 생성: '{output_dir}'")
+    
+    # 전체 스토리라인 텍스트 파일로 저장
+    with open(os.path.join(output_dir, "storyline.txt"), "w", encoding="utf-8") as f:
+        f.write(full_storyline_text)
+
     character_description, scenes_text = parse_storyline(full_storyline_text)
 
-    generate_illustrations(client, scenes_text, character_description)
+    generate_illustrations(client, scenes_text, character_description, output_dir)
     
-    generate_voice_and_subtitles(scenes_text)
+    generate_voice_and_subtitles(scenes_text, output_dir)
 
     print("\n--- 모든 프로세스 완료 ---")
     print("'output' 폴더에서 결과물을 확인하세요.")
