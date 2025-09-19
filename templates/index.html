@@ -1,0 +1,958 @@
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>금융 동화 | AI 기반 금융 리터러시</title>
+    <meta
+      name="description"
+      content="어려운 금융 개념을 동화·일러스트·음성으로 쉽게 전달하는 AI 서비스"
+    />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Pretendard:wght@400;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --bg: #0b1020;
+        --panel: #121730;
+        --muted: #8fa1c7;
+        --text: #eef1ff;
+        --brand: #6ea8ff;
+        --brand-2: #a5f3fc;
+        --ok: #22c55e;
+        --warn: #f59e0b;
+        --danger: #ef4444;
+        --shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+        --radius: 16px;
+      }
+      html,
+      body {
+        height: 100%;
+      }
+      body {
+        margin: 0;
+        font-family: 'Pretendard', 'Apple SD Gothic Neo', system-ui,
+          -apple-system, Segoe UI, Roboto, Helvetica, Arial, 'Noto Sans KR',
+          'Noto Color Emoji', sans-serif;
+        background: radial-gradient(
+            60% 40% at 20% 0%,
+            rgba(110, 168, 255, 0.15),
+            transparent 60%
+          ),
+          radial-gradient(
+            50% 30% at 80% 10%,
+            rgba(165, 243, 252, 0.12),
+            transparent 70%
+          ),
+          linear-gradient(180deg, #0a0f1e 0%, #0f1630 100%);
+        color: var(--text);
+        line-height: 1.6;
+      }
+      a {
+        color: inherit;
+        text-decoration: none;
+      }
+      .container {
+        width: min(1200px, 92%);
+        margin-inline: auto;
+      }
+      header {
+        position: sticky;
+        top: 0;
+        z-index: 50;
+        backdrop-filter: blur(10px);
+        background: linear-gradient(
+          180deg,
+          rgba(10, 15, 30, 0.9),
+          rgba(10, 15, 30, 0.4)
+        );
+        border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+      }
+      .nav {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 14px 0;
+      }
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        font-weight: 800;
+        letter-spacing: 0.3px;
+      }
+      .logo {
+        width: 32px;
+        height: 32px;
+        border-radius: 8px;
+        background: linear-gradient(135deg, var(--brand), var(--brand-2));
+        box-shadow: var(--shadow);
+      }
+      .nav ul {
+        display: flex;
+        gap: 18px;
+        list-style: none;
+        padding: 0;
+        margin: 0;
+      }
+      .nav a {
+        padding: 8px 12px;
+        border-radius: 10px;
+        color: var(--muted);
+      }
+      .nav a:hover,
+      .nav a.active {
+        color: var(--text);
+        background: rgba(255, 255, 255, 0.06);
+      }
+
+      .hero {
+        display: grid;
+        grid-template-columns: 1.25fr 1fr;
+        gap: 40px;
+        align-items: center;
+        padding: 64px 0 40px;
+      }
+      .badge {
+        display: inline-flex;
+        gap: 8px;
+        align-items: center;
+        padding: 6px 10px;
+        border-radius: 999px;
+        background: rgba(110, 168, 255, 0.12);
+        color: var(--brand);
+        font-weight: 700;
+        font-size: 12px;
+        letter-spacing: 0.3px;
+      }
+      .title {
+        font-size: clamp(28px, 5vw, 56px);
+        line-height: 1.1;
+        margin: 12px 0 12px;
+        font-weight: 800;
+      }
+      .subtitle {
+        color: var(--muted);
+        font-size: clamp(14px, 2.2vw, 18px);
+      }
+      .cta {
+        display: flex;
+        gap: 12px;
+        margin-top: 24px;
+      }
+      .btn {
+        padding: 12px 16px;
+        border-radius: 12px;
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        background: #192246;
+        color: var(--text);
+        font-weight: 700;
+        box-shadow: var(--shadow);
+      }
+      .btn.primary {
+        background: linear-gradient(135deg, var(--brand), #7cc5ff);
+        color: #061225;
+      }
+      .btn.ghost {
+        background: transparent;
+      }
+      .hero-card {
+        background: linear-gradient(180deg, #11193a, #0e1533);
+        border: 1px solid rgba(255, 255, 255, 0.06);
+        border-radius: 20px;
+        padding: 18px;
+        box-shadow: var(--shadow);
+      }
+      .hero-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+      }
+      .chip {
+        font-size: 12px;
+        color: var(--muted);
+      }
+
+      section {
+        padding: 80px 0;
+      }
+      h2 {
+        font-size: clamp(22px, 3.4vw, 32px);
+        margin: 0 0 14px;
+        font-weight: 800;
+      }
+      .lead {
+        color: var(--muted);
+        margin-bottom: 28px;
+      }
+      .grid-2 {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 28px;
+      }
+      .grid-3 {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 20px;
+      }
+      .card {
+        background: linear-gradient(180deg, #101737, #0c1330);
+        border: 1px solid rgba(255, 255, 255, 0.06);
+        border-radius: 16px;
+        padding: 18px;
+        box-shadow: var(--shadow);
+      }
+      .card h3 {
+        margin: 0 0 8px;
+        font-size: 18px;
+      }
+      .card p {
+        margin: 0;
+        color: var(--muted);
+      }
+
+      .flow {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 16px;
+        counter-reset: step;
+      }
+      .flow .step {
+        position: relative;
+        padding: 16px;
+        border-radius: 14px;
+        background: #10173a;
+        border: 1px dashed rgba(255, 255, 255, 0.08);
+      }
+      .flow .step::before {
+        counter-increment: step;
+        content: counter(step);
+        position: absolute;
+        inset: auto auto 8px 12px;
+        font-weight: 800;
+        color: var(--brand);
+        font-size: 12px;
+      }
+
+      .table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 14px;
+        overflow: auto;
+        display: block;
+      }
+      .table th,
+      .table td {
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        padding: 10px 12px;
+        text-align: left;
+      }
+      .table th {
+        background: #0e1533;
+        position: sticky;
+        top: 0;
+      }
+      .tag {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 6px 10px;
+        border-radius: 999px;
+        font-size: 12px;
+        background: rgba(255, 255, 255, 0.06);
+        color: var(--muted);
+      }
+
+      .accordion {
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 14px;
+        overflow: hidden;
+      }
+      .acc-item + .acc-item {
+        border-top: 1px solid rgba(255, 255, 255, 0.08);
+      }
+      .acc-head {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 16px;
+        cursor: pointer;
+        background: #0f1632;
+      }
+      .acc-body {
+        display: none;
+        padding: 16px;
+        background: #0b122c;
+        color: var(--muted);
+      }
+
+      .gallery {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 12px;
+      }
+      .shot {
+        aspect-ratio: 16/10;
+        border-radius: 12px;
+        background: linear-gradient(135deg, #1a2352, #0c1330);
+        display: grid;
+        place-items: center;
+        color: var(--muted);
+        border: 1px solid rgba(255, 255, 255, 0.06);
+      }
+
+      footer {
+        padding: 40px 0;
+        color: #a7b3d9;
+        border-top: 1px solid rgba(255, 255, 255, 0.06);
+      }
+
+      /* Utilities */
+      .em {
+        color: var(--brand);
+        font-weight: 700;
+      }
+      .row {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        flex-wrap: wrap;
+      }
+      .ghost {
+        opacity: 0.8;
+      }
+      .right {
+        text-align: right;
+      }
+      .mt-8 {
+        margin-top: 32px;
+      }
+      .mt-4 {
+        margin-top: 16px;
+      }
+      .mt-2 {
+        margin-top: 8px;
+      }
+
+      /* Responsive */
+      @media (max-width: 980px) {
+        .hero {
+          grid-template-columns: 1fr;
+        }
+        .grid-3 {
+          grid-template-columns: 1fr;
+        }
+        .grid-2 {
+          grid-template-columns: 1fr;
+        }
+        .flow {
+          grid-template-columns: 1fr 1fr;
+        }
+        .gallery {
+          grid-template-columns: 1fr 1fr;
+        }
+        .nav ul {
+          display: none;
+        }
+      }
+      @media (max-width: 560px) {
+        .flow {
+          grid-template-columns: 1fr;
+        }
+        .gallery {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <div class="container nav">
+        <div class="brand">
+          <div class="logo"></div>
+          금융 동화
+        </div>
+        <nav>
+          <ul>
+            <li><a href="#problem">문제</a></li>
+            <li><a href="#solution">해결책</a></li>
+            <li><a href="#features">기능</a></li>
+            <li><a href="#data">데이터&AI</a></li>
+            <li><a href="#diff">차별성</a></li>
+            <li><a href="#impact">효과</a></li>
+            <li><a href="#poc">PoC</a></li>
+          </ul>
+        </nav>
+      </div>
+    </header>
+
+    <main>
+      <!-- Hero -->
+      <section class="hero container" id="top">
+        <div>
+          <span class="badge">AI 기반 금융 리터러시</span>
+          <h1 class="title">
+            어려운 금융을 <span class="em">동화·일러스트·음성</span>으로 쉽게
+          </h1>
+          <p class="subtitle">
+            시니어·사회초년생·부모 동행 어린이를 위해 복잡한 금융 개념을
+            스토리텔링으로 자동 제작하는 혁신 서비스
+          </p>
+          <div class="cta">
+            <a class="btn primary" href="#solution">서비스 보기</a>
+            <a class="btn ghost" href="#poc">PoC 체험하기</a>
+          </div>
+          <div class="row mt-4 ghost">
+            <span class="tag">RAG</span>
+            <span class="tag">파인튜닝 LLM</span>
+            <span class="tag">이미지 생성</span>
+            <span class="tag">TTS</span>
+            <span class="tag">다채널 연동</span>
+          </div>
+        </div>
+        <div class="hero-card">
+          <div class="hero-grid">
+            <div class="card">
+              <h3>동화 공장</h3>
+              <p class="chip">약관·사기사례·법규 → 스토리 자동 변환</p>
+            </div>
+            <div class="card">
+              <h3>개인화</h3>
+              <p class="chip">연령/상품/이력 기반 맞춤 추천</p>
+            </div>
+            <div class="card">
+              <h3>멀티미디어</h3>
+              <p class="chip">텍스트+일러스트+음성 나레이션</p>
+            </div>
+            <div class="card">
+              <h3>다채널</h3>
+              <p class="chip">앱·영업점·콜센터·메신저·ATM</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 문제 & 배경 -->
+      <section id="problem">
+        <div class="container">
+          <h2>문제 & 제안 배경</h2>
+          <p class="lead">
+            금융 서비스의 <b>정보 비대칭·복잡성</b>으로 인한 이해 부족과 소외.
+            특히 시니어·사회초년생에게 심각.
+          </p>
+          <div class="grid-2">
+            <div class="card">
+              <h3>시니어(고령층)</h3>
+              <p>
+                복잡한 절차·작은 글씨·빠른 변화로 소외. 금융사기 취약. 대면/음성
+                채널(영업점·콜센터)과 동화 콘텐츠 결합으로 신뢰와 이해도 제고.
+              </p>
+            </div>
+            <div class="card">
+              <h3>사회초년생</h3>
+              <p>
+                신용·투자 개념 부족. 모바일 친화 동화/웹툰/숏폼·게임 요소로 흥미
+                유지, 습관 형성 지원.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 해결책 개요 -->
+      <section id="solution">
+        <div class="container">
+          <h2>해결책: AI 스토리텔링 기반 "금융 동화"</h2>
+          <p class="lead">
+            금융 데이터를 <b>동화 시나리오</b>로 재구성하고,
+            <b>일러스트·음성</b>까지 자동 생성하는 동적 콘텐츠 파이프라인.
+          </p>
+          <div class="flow mt-4">
+            <div class="step">
+              <b>입력 데이터</b>
+              <p class="ghost">약관·법규·사기 사례·상품 정보</p>
+            </div>
+            <div class="step">
+              <b>LLM + RAG</b>
+              <p class="ghost">최신·정확한 정보로 스크립트 생성</p>
+            </div>
+            <div class="step">
+              <b>멀티모달 생성</b>
+              <p class="ghost">이미지 생성 + TTS 나레이션</p>
+            </div>
+            <div class="step">
+              <b>배포</b>
+              <p class="ghost">앱·영업점·콜센터·메신저·ATM</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 주요 기능 -->
+      <section id="features">
+        <div class="container">
+          <h2>주요 기능</h2>
+          <div class="grid-3 mt-2">
+            <div class="card">
+              <h3>AI 동화 자동 제작</h3>
+              <p>
+                금융 개념/상품을 쉬운 스토리로 변환. "복리=눈덩이", "채권=신뢰의
+                약속" 등 비유 중심.
+              </p>
+            </div>
+            <div class="card">
+              <h3>개인화 추천</h3>
+              <p>
+                연령·가입상품·이력 분석으로 적시 동화 추천. 중요
+                이벤트(만기/금리) 푸시 알림.
+              </p>
+            </div>
+            <div class="card">
+              <h3>다채널 연동</h3>
+              <p>
+                모바일 앱, 영업점 태블릿, 콜센터 화면/TTS, 메신저 카드뉴스, ATM
+                QR 연동.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 데이터 & AI 적용 -->
+      <section id="data">
+        <div class="container">
+          <h2>활용 데이터 & 생성형 AI 적용</h2>
+          <div class="grid-2">
+            <div class="card">
+              <h3>콘텐츠 생성 데이터</h3>
+              <p>
+                약관·상품 설명·법규·사기 사례·시장 트렌드. RAG로 최신성 확보,
+                파인튜닝으로 전문성 강화.
+              </p>
+            </div>
+            <div class="card">
+              <h3>개인화 데이터</h3>
+              <p>
+                연령·보유상품·거래 내역·상담 로그. 취향 반영 스토리·설명 대상
+                추천, 대화형 에이전트로 확장.
+              </p>
+            </div>
+          </div>
+          <div class="accordion mt-8" id="ai-arch">
+            <div class="acc-item">
+              <div class="acc-head"><b>아키텍처 개요</b><span>+</span></div>
+              <div class="acc-body">
+                <ul>
+                  <li>
+                    Vector DB에 약관/사기사례/상품비교 문서 색인 → RAG Retrieval
+                  </li>
+                  <li>LLM(파인튜닝)으로 스토리톤·연령대 맞춤 스크립트 생성</li>
+                  <li>이미지 생성 모델로 일러스트, TTS로 나레이션 파일 생성</li>
+                  <li>채널 어댑터(앱/영업점/콜센터/메신저/ATM)로 배포</li>
+                </ul>
+              </div>
+            </div>
+            <div class="acc-item">
+              <div class="acc-head"><b>보안·개인정보</b><span>+</span></div>
+              <div class="acc-body">
+                <ul>
+                  <li>PII 최소 수집·가명처리, 전송·저장 암호화</li>
+                  <li>채널별 접근제어/감사로그, 모델 입력 필터링</li>
+                  <li>Retrieval 소스 출처 라벨링으로 설명 책임성 확보</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 차별성 -->
+      <section id="diff">
+        <div class="container">
+          <h2>독창성 & 차별성</h2>
+          <p class="lead">
+            정적 강의형 교육을 넘어, <b>실시간 생성</b>·<b>개인 맞춤</b>·<b
+              >스토리텔링 몰입</b
+            >.
+          </p>
+          <div class="card">
+            <div style="overflow: auto">
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th>구분</th>
+                    <th>기존(예: MSOA / Savvy Saving Seniors)</th>
+                    <th>금융 동화</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>콘텐츠 형태</td>
+                    <td>정적 자료·워크숍 키트</td>
+                    <td>동화·일러스트·TTS 자동 생성</td>
+                  </tr>
+                  <tr>
+                    <td>최신성</td>
+                    <td>업데이트 주기 길다</td>
+                    <td>RAG로 최신 사기/트렌드 반영</td>
+                  </tr>
+                  <tr>
+                    <td>개인화</td>
+                    <td>동일 내용 일괄 제공</td>
+                    <td>연령/상품/이력 기반 맞춤</td>
+                  </tr>
+                  <tr>
+                    <td>채널</td>
+                    <td>교육 현장 중심</td>
+                    <td>앱·영업점·콜센터·메신저·ATM</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 실현 가능성 -->
+      <section id="feasible">
+        <div class="container">
+          <h2>실현 가능성</h2>
+          <div class="grid-3 mt-2">
+            <div class="card">
+              <h3>기술</h3>
+              <p>
+                클라우드 LLM API 활용으로 빠른 구축. 핵심 난제는 데이터
+                연동·개인화 로직·보안.
+              </p>
+            </div>
+            <div class="card">
+              <h3>인프라</h3>
+              <p>기존 앱/영업점/콜센터 시스템에 API로 통합. 초기 비용 절감.</p>
+            </div>
+            <div class="card">
+              <h3>프로토타입</h3>
+              <p>스크립트→이미지→TTS 변환 PoC로 가치 검증. 단계적 확장 가능.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 기대 효과 -->
+      <section id="impact">
+        <div class="container">
+          <h2>기대되는 문제 해결 효과</h2>
+          <div class="grid-3 mt-2">
+            <div class="card">
+              <h3>사용자</h3>
+              <p>
+                어린이·시니어·초년생이 금융 개념을 직관적으로 이해. 습관·사기
+                예방에 기여.
+              </p>
+            </div>
+            <div class="card">
+              <h3>금융사</h3>
+              <p>
+                불완전판매 위험 감소, 신뢰 기반 장기 관계 형성, 만족도/충성도
+                향상.
+              </p>
+            </div>
+            <div class="card">
+              <h3>사회</h3>
+              <p>
+                금융 리터러시 저변 확대. 세대 간 격차 해소 및 포용적 금융 생태계
+                구축.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 확장성 -->
+      <section id="roadmap">
+        <div class="container">
+          <h2>발전 가능성 & 확장</h2>
+          <div class="grid-3 mt-2">
+            <div class="card">
+              <h3>개인 맞춤 플랫폼</h3>
+              <p>생애주기(초년생/신혼/자녀/은퇴)별 시리즈, 상품 추천 결합.</p>
+            </div>
+            <div class="card">
+              <h3>양방향 소통</h3>
+              <p>퀴즈·시뮬·대화형 에이전트로 학습 검증 및 참여도↑.</p>
+            </div>
+            <div class="card">
+              <h3>교육·제휴</h3>
+              <p>학교/기관 금융교육, 제휴사 상품 스토리 연계로 BM 확장.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- PoC (Assets-driven) -->
+      <section id="poc">
+        <div class="container">
+          <h2>PoC 데모 — 장면별 이미지·오디오·자막</h2>
+          <p class="lead">
+            업로드한 에셋(이미지/오디오/자막)을 장면 단위로 재생합니다. 좌우
+            버튼으로 넘겨보세요.
+          </p>
+
+          <div class="card" style="margin-top: 12px">
+            <div class="row">
+              <button class="btn primary" id="open-demo">데모 열기 ▶︎</button>
+              <span class="ghost">(로컬 에셋 경로에서 직접 재생)</span>
+            </div>
+          </div>
+
+          <div class="gallery mt-8">
+            <div class="shot" data-shot>복리: 눈덩이처럼 불어나는 이야기</div>
+            <div class="shot" data-shot>채권: 신뢰의 약속을 지키는 친구들</div>
+            <div class="shot" data-shot>예금상품 동화</div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <div class="container row" style="justify-content: space-between">
+        <div>© <span id="year"></span> 금융 동화</div>
+        <div class="row">
+          <a class="tag" href="#top">맨 위로</a>
+        </div>
+      </div>
+    </footer>
+
+    <!-- Modal -->
+    <!-- Modal with asset playback -->
+    <dialog
+      id="demo-modal"
+      style="
+        border: none;
+        border-radius: 16px;
+        padding: 0;
+        max-width: 860px;
+        width: 96%;
+        background: #0b122c;
+        color: var(--text);
+      "
+    >
+      <div style="padding: 18px 18px 0" class="row">
+        <b>동화 데모</b>
+        <span class="ghost" id="scene-indicator"></span>
+        <button id="close-demo" class="btn ghost" style="margin-left: auto">
+          닫기
+        </button>
+      </div>
+      <div style="padding: 0 18px 18px">
+        <div class="card" style="margin-top: 12px">
+          <div class="grid-2" style="align-items: center">
+            <div>
+              <img
+                id="scene-img"
+                alt="scene image"
+                style="
+                  width: 100%;
+                  height: auto;
+                  border-radius: 12px;
+                  border: 1px solid rgba(255, 255, 255, 0.06);
+                "
+              />
+            </div>
+            <div>
+              <h3 id="scene-title">장면</h3>
+              <p class="ghost" id="scene-subtitle">자막 로딩 중…</p>
+              <audio id="tts" controls style="width: 100%; margin-top: 10px">
+                <source id="tts-src" src="" type="audio/mpeg" />
+              </audio>
+              <div class="row mt-4">
+                <button class="btn" id="prev">◀ 이전</button>
+                <button class="btn" id="next">다음 ▶</button>
+                <button class="btn ghost" id="dl-img">이미지 저장</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </dialog>
+
+    <script>
+      // Smooth scroll for in-page anchors
+      document.querySelectorAll('a[href^="#"]').forEach((a) => {
+        a.addEventListener('click', (e) => {
+          const id = a.getAttribute('href');
+          const el = document.querySelector(id);
+          if (el) {
+            e.preventDefault();
+            el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          }
+        });
+      });
+
+      // Active nav highlight on scroll
+      const sections = [
+        '#problem',
+        '#solution',
+        '#features',
+        '#data',
+        '#diff',
+        '#impact',
+        '#poc',
+      ];
+      const navLinks = Array.from(document.querySelectorAll('header nav a'));
+      const onScroll = () => {
+        const y = window.scrollY + 120;
+        let current = null;
+        sections.forEach((sel) => {
+          const el = document.querySelector(sel);
+          if (el && el.offsetTop <= y) current = sel;
+        });
+        navLinks.forEach((a) =>
+          a.classList.toggle('active', a.getAttribute('href') === current)
+        );
+      };
+      document.addEventListener('scroll', onScroll, { passive: true });
+      onScroll();
+
+      // Accordion
+      document.querySelectorAll('.acc-head').forEach((head) => {
+        head.addEventListener('click', () => {
+          const body = head.nextElementSibling;
+          const open = body.style.display === 'block';
+          body.style.display = open ? 'none' : 'block';
+          head.querySelector('span').textContent = open ? '+' : '–';
+        });
+      });
+
+      // === ASSET-BASED POC ===
+      const modal = document.getElementById('demo-modal');
+      const openBtn = document.getElementById('open-demo');
+      const closeBtn = document.getElementById('close-demo');
+      const audio = document.getElementById('tts');
+      const audioSrc = document.getElementById('tts-src');
+      const imgEl = document.getElementById('scene-img');
+      const subtitleEl = document.getElementById('scene-subtitle');
+      const titleEl = document.getElementById('scene-title');
+      const idxEl = document.getElementById('scene-indicator');
+      const prevBtn = document.getElementById('prev');
+      const nextBtn = document.getElementById('next');
+      const dlImgBtn = document.getElementById('dl-img');
+      const gallery = document.querySelector('.gallery');
+
+      let currentStoryId = null;
+      let currentSceneIndex = 0;
+      const TOTAL_SCENES = 7; // 동화는 7개 장면으로 구성
+
+      // 씬(Scene) 데이터를 로드하는 함수
+      async function loadScene(storyId, sceneIndex) {
+        const sceneNum = sceneIndex + 1;
+        currentStoryId = storyId;
+        currentSceneIndex = sceneIndex;
+
+        titleEl.textContent = `장면 ${sceneNum}`;
+        idxEl.textContent = `${sceneNum} / ${TOTAL_SCENES}`;
+
+        // 서버 엔드포인트를 통해 이미지, 오디오, 자막 경로 설정
+        const basePath = `/outputs/${storyId}/`;
+        const imagePath = `${basePath}scene_${sceneNum}_image.png`;
+        const audioPath = `${basePath}scene_${sceneNum}_audio.mp3`;
+        const subtitlePath = `${basePath}scene_${sceneNum}_subtitle.txt`;
+
+        imgEl.src = imagePath;
+        audioSrc.src = audioPath;
+        audio.load();
+
+        try {
+          const response = await fetch(subtitlePath);
+          if (response.ok) {
+            subtitleEl.textContent = await response.text();
+          } else {
+            subtitleEl.textContent = '자막 파일이 없습니다.';
+          }
+        } catch (e) {
+          subtitleEl.textContent = '자막을 불러오는 데 실패했습니다.';
+        }
+      }
+
+      // 이야기 목록을 서버에서 불러와 갤러리를 채우는 함수
+      async function loadStories() {
+        try {
+          const response = await fetch('/api/stories');
+          const stories = await response.json();
+
+          gallery.innerHTML = ''; // 기존 갤러리 비우기
+          if (stories.length === 0) {
+            gallery.innerHTML =
+              '<p>생성된 이야기가 없습니다. 먼저 스크립트를 실행해주세요.</p>';
+            return;
+          }
+
+          stories.forEach((storyId) => {
+            const shotEl = document.createElement('div');
+            shotEl.className = 'shot';
+            shotEl.textContent = storyId
+              .replace('story_', '')
+              .replace(/_/g, ' '); // 폴더명을 보기 좋게 변경
+            shotEl.style.cursor = 'pointer';
+
+            shotEl.addEventListener('click', () => {
+              currentStoryId = storyId;
+              currentSceneIndex = 0;
+              modal.showModal();
+              loadScene(currentStoryId, currentSceneIndex);
+            });
+            gallery.appendChild(shotEl);
+          });
+        } catch (error) {
+          gallery.innerHTML = '<p>이야기 목록을 불러오는 데 실패했습니다.</p>';
+          console.error('Error fetching stories:', error);
+        }
+      }
+
+      // 모달 제어 이벤트 리스너
+      openBtn.addEventListener('click', () => {
+        // 가장 최신 이야기를 열어줌
+        const firstShot = gallery.querySelector('.shot');
+        if (firstShot) {
+          firstShot.click();
+        }
+      });
+      closeBtn.addEventListener('click', () => modal.close());
+
+      // 이전/다음 버튼 이벤트
+      prevBtn.addEventListener('click', () => {
+        const newIndex = (currentSceneIndex - 1 + TOTAL_SCENES) % TOTAL_SCENES;
+        loadScene(currentStoryId, newIndex);
+      });
+      nextBtn.addEventListener('click', () => {
+        const newIndex = (currentSceneIndex + 1) % TOTAL_SCENES;
+        loadScene(currentStoryId, newIndex);
+      });
+
+      // 이미지 다운로드 버튼
+      dlImgBtn.addEventListener('click', () => {
+        const a = document.createElement('a');
+        a.href = imgEl.src;
+        a.download = `${currentStoryId}_scene_${currentSceneIndex + 1}.png`;
+        a.click();
+      });
+
+      // 페이지 로드 시 이야기 목록 불러오기
+      document.addEventListener('DOMContentLoaded', loadStories);
+
+      // 연도 설정
+      document.getElementById('year').textContent = new Date().getFullYear();
+
+      // Simple Gallery Click => Focus/Caption swap (placeholder)
+      document.querySelectorAll('[data-shot]').forEach((el) => {
+        el.addEventListener('click', () => {
+          const text = el.textContent.trim();
+          document.getElementById('caption').textContent = '(자막) ' + text;
+          if (!modal.open) modal.showModal();
+        });
+      });
+    </script>
+  </body>
+</html>
