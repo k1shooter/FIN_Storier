@@ -16,6 +16,7 @@ from langchain.text_splitter import RecursiveCharacterTextSplitter
 # --- 기존 유틸리티 모듈 ---
 from gtts import gTTS
 from PIL import Image
+import argparse  # argparse 모듈 추가
 
 # .env 로드 및 API 키 설정
 load_dotenv()
@@ -240,9 +241,13 @@ def generate_voice_and_subtitles(scenes_text):
 
 # --- 메인 실행 로직 ---
 def main():
+    parser = argparse.ArgumentParser(description="RAG를 사용하여 질문에 대한 동화를 생성합니다.")
+    parser.add_argument("--question", type=str, required=True, help="동화로 만들고 싶은 질문")
+    args = parser.parse_args()
+
     client = genai.Client(api_key=api_key)
 
-    user_question = "제미니 세이프 하버(Safe Harbor) 예금의 장점과 특징을 알려줘"
+    user_question = args.question # 하드코딩된 값을 인자로 대체
     
     print(f"--- 고급 RAG 프로세스 시작 ---")
     print(f"사용자 질문: {user_question}")

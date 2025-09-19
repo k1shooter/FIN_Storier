@@ -12,7 +12,7 @@ from google.genai import types
 
 from gtts import gTTS
 from PIL import Image
-
+import argparse
 # .env 파일에서 환경 변수 로드
 load_dotenv()
 
@@ -218,10 +218,14 @@ def generate_voice_and_subtitles(scenes_text):
 # --- 메인 실행 로직 ---
 def main():
     """프로그램의 메인 로직을 실행합니다."""
+
+    parser = argparse.ArgumentParser(description="금융 상품 설명 동화를 생성합니다.")
+    parser.add_argument("--product", type=str, required=True, help="설명을 생성할 금융 상품의 이름")
+    args = parser.parse_args()
     
     client = genai.Client(api_key=api_key)
 
-    product_to_explain = "펀드"
+    product_to_explain = args.product
     print(f"--- '{product_to_explain}' 설명 프로세스 시작 ---")
 
     description = get_product_description(product_to_explain)
